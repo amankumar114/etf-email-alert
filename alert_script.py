@@ -25,7 +25,7 @@ LAST_BUY_FILE = 'last_buy_dates.json'
 
 EMAIL_SENDER = os.getenv("EMAIL")
 EMAIL_PASSWORD = os.getenv("PASS")
-EMAIL_RECEIVER = 'amankumarism@gmail.com'
+EMAIL_RECEIVER = ["amankumarism@gmail.com", "amaniitism0405@gmail.com", "muskanrohada432@gmail.com"]
 
 # Setup logging
 logging.basicConfig(
@@ -178,7 +178,7 @@ def send_email(subject, html_body):
     try:
         msg = MIMEMultipart()
         msg['From'] = EMAIL_SENDER
-        msg['To'] = EMAIL_RECEIVER
+        msg["To"] = ", ".join(EMAIL_RECEIVER)
         msg['Subject'] = subject
         msg.attach(MIMEText(html_body, 'html'))
 
