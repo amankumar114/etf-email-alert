@@ -8,6 +8,14 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
 import numpy as np
+import os
+import smtplib
+import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
+
+
+
 
 # === CONFIG ===
 TICKERS = ['NIFTYBEES.NS', 'BANKBEES.NS', 'GOLDBEES.NS']
@@ -15,8 +23,8 @@ EMA_DAYS = [20, 50, 100, 200]  # Key EMAs to track
 VOLATILITY_THRESHOLD = 2.5  # %
 LAST_BUY_FILE = 'last_buy_dates.json'
 
-EMAIL_SENDER = 'amankumarism@gmail.com'
-EMAIL_PASSWORD = 'acpx atfi idvt ruad'
+EMAIL_SENDER = os.getenv("EMAIL")
+EMAIL_PASSWORD = os.getenv("PASS")
 EMAIL_RECEIVER = 'amankumarism@gmail.com'
 
 # Setup logging
