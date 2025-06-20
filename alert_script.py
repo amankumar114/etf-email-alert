@@ -18,7 +18,7 @@ from email.mime.text import MIMEText
 
 
 # === CONFIG ===
-TICKERS = ['NIFTYBEES.NS', 'BANKBEES.NS', 'GOLDBEES.NS']
+TICKERS = ['NIFTYBEES.NS', 'BANKBEES.NS', 'GOLDBEES.NS', 'SPY', 'QQQ']  # Added SPY (S&P 500) and QQQ (NASDAQ)
 EMA_DAYS = [20, 50, 100, 200]  # Key EMAs to track
 VOLATILITY_THRESHOLD = 2.5  # %
 LAST_BUY_FILE = 'last_buy_dates.json'
