@@ -18,7 +18,19 @@ from email.mime.text import MIMEText
 
 
 # === CONFIG ===
-TICKERS = ['NIFTYBEES.NS', 'BANKBEES.NS', 'GOLDBEES.NS', 'SPY', 'QQQ']  # Added SPY (S&P 500) and QQQ (NASDAQ)
+# Update the TICKERS list to include the new ETFs
+TICKERS = [
+    'NIFTYBEES.NS',        # Nifty 50 ETF
+    'BANKBEES.NS',         # Banking Sector ETF
+    'GOLDBEES.NS',         # Gold ETF
+    'AUTOBEES.NS',         # Nippon India Nifty Auto ETF
+    'ITBEES.NS',           # Nippon India Nifty IT ETF
+    'FMCGBEES.NS',         # Nippon India Nifty FMCG ETF
+    'PHARMABEES.NS',       # Nippon India Nifty Pharma ETF
+    'SPY',                 # S&P 500 ETF
+    'QQQ'                  # NASDAQ-100 ETF
+]
+# Rest of the code remains exactly the same...
 EMA_DAYS = [20, 50, 100, 200]  # Key EMAs to track
 VOLATILITY_THRESHOLD = 2.5  # %
 LAST_BUY_FILE = 'last_buy_dates.json'
