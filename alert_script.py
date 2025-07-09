@@ -37,7 +37,7 @@ LAST_BUY_FILE = 'last_buy_dates.json'
 
 EMAIL_SENDER = os.getenv("EMAIL")
 EMAIL_PASSWORD = os.getenv("PASS")
-EMAIL_RECEIVERS = os.getenv('EMAIL_RECEIVERS', '').split(',')
+EMAIL_RECEIVERS = os.getenv('EMAIL_RECEIVER', '').split(',')
 
 # Setup logging
 logging.basicConfig(
