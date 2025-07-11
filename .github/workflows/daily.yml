@@ -25,4 +25,5 @@ jobs:
       env:
         EMAIL: ${{ secrets.EMAIL }}
         PASS: ${{ secrets.PASS }}
+        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
       run: python alert_script.py
