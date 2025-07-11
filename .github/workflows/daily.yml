@@ -2,12 +2,17 @@ name: Run Daily ETF Email
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # Runs every day at 2:30 PM IST (9:00 AM UTC)
-  workflow_dispatch:  # Allows manual trigger from GitHub
+    - cron: '0 9 * * *'  # Runs daily at 2:30 PM IST (9:00 AM UTC)
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+
+    env:
+      EMAIL: ${{ secrets.EMAIL }}
+      PASS: ${{ secrets.PASS }}
+      EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
 
     steps:
     - name: Checkout code
@@ -21,9 +26,5 @@ jobs:
     - name: Install dependencies
       run: pip install yfinance pandas numpy
 
-    - name: Run your alert script
-      env:
-        EMAIL: ${{ secrets.EMAIL }}
-        PASS: ${{ secrets.PASS }}
-        EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
+    - name: Run alert script
       run: python alert_script.py
