@@ -23,10 +23,7 @@ TICKERS = [
     'NIFTYBEES.NS',        # Nifty 50 ETF
     'BANKBEES.NS',         # Banking Sector ETF
     'GOLDBEES.NS',         # Gold ETF
-    'JUNIORBEES.NS',         # Nippon India Nifty Auto ETF
-    'ITBEES.NS',           # Nippon India Nifty IT ETF
-    'FMCGBEES.NS',         # Nippon India Nifty FMCG ETF
-    'PHARMABEES.NS',       # Nippon India Nifty Pharma ETF
+    'JUNIORBEES.NS',         # Nippon India Nifty Auto ET
     'SPY',                 # S&P 500 ETF
     'QQQ'                  # NASDAQ-100 ETF
 ]
