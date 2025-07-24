@@ -469,6 +469,12 @@ def generate_html(reports, force_buy=False):
             rec_class = "avoid"
             recommendation = "⛔ AVOID - Price too high"
         
+        # Ensure all values are floats for formatting
+        last_close = float(r['last_close'])
+        volatility = float(r['volatility'])
+        ema_values = [float(x) for x in r['ema_values']]
+        ema_diffs = [float(x) for x in r['ema_diffs']]
+        
         html += f"""
                 <div class="card" style="border-top-color: {zone_color}">
                     <div class="card-header">
@@ -481,11 +487,11 @@ def generate_html(reports, force_buy=False):
                     <div class="price-container">
                         <div class="price-box">
                             <div class="price-label">CURRENT PRICE</div>
-                            <div class="price-value">₹{r['last_close']:.2f}</div>
+                            <div class="price-value">₹{last_close:.2f}</div>
                         </div>
                         <div class="price-box">
                             <div class="price-label">VOLATILITY</div>
-                            <div class="price-value">{r['volatility']:.1f}%</div>
+                            <div class="price-value">{volatility:.1f}%</div>
                         </div>
                     </div>
                     
@@ -497,23 +503,23 @@ def generate_html(reports, force_buy=False):
                         </tr>
                         <tr>
                             <td>20 EMA</td>
-                            <td>₹{r['ema_values'][0]:.2f}</td>
-                            <td class="{'diff-down' if r['ema_diffs'][0] < 0 else 'diff-up'}">{r['ema_diffs'][0]:+.1f}%</td>
+                            <td>₹{ema_values[0]:.2f}</td>
+                            <td class="{'diff-down' if ema_diffs[0] < 0 else 'diff-up'}">{ema_diffs[0]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>50 EMA</td>
-                            <td>₹{r['ema_values'][1]:.2f}</td>
-                            <td class="{'diff-down' if r['ema_diffs'][1] < 0 else 'diff-up'}">{r['ema_diffs'][1]:+.1f}%</td>
+                            <td>₹{ema_values[1]:.2f}</td>
+                            <td class="{'diff-down' if ema_diffs[1] < 0 else 'diff-up'}">{ema_diffs[1]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>100 EMA</td>
-                            <td>₹{r['ema_values'][2]:.2f}</td>
-                            <td class="{'diff-down' if r['ema_diffs'][2] < 0 else 'diff-up'}">{r['ema_diffs'][2]:+.1f}%</td>
+                            <td>₹{ema_values[2]:.2f}</td>
+                            <td class="{'diff-down' if ema_diffs[2] < 0 else 'diff-up'}">{ema_diffs[2]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>200 EMA</td>
-                            <td>₹{r['ema_values'][3]:.2f}</td>
-                            <td class="{'diff-down' if r['ema_diffs'][3] < 0 else 'diff-up'}">{r['ema_diffs'][3]:+.1f}%</td>
+                            <td>₹{ema_values[3]:.2f}</td>
+                            <td class="{'diff-down' if ema_diffs[3] < 0 else 'diff-up'}">{ema_diffs[3]:+.1f}%</td>
                         </tr>
                     </table>
                     
