@@ -14,16 +14,16 @@ import logging
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 
-
-
-
 # === CONFIG ===
 # Update the TICKERS list to include the new ETFs
 TICKERS = [
     'NIFTYBEES.NS',        # Nifty 50 ETF
     'BANKBEES.NS',         # Banking Sector ETF
     'GOLDBEES.NS',         # Gold ETF
-    'JUNIORBEES.NS',         # Nippon India Nifty Auto ET
+    'AUTOBEES.NS',         # Nippon India Nifty Auto ETF
+    'ITBEES.NS',           # Nippon India Nifty IT ETF
+    'JUNIORBEES.NS',         # Nippon India Nifty FMCG ETF
+    'PHARMABEES.NS',       # Nippon India Nifty Pharma ETF
     'SPY',                 # S&P 500 ETF
     'QQQ'                  # NASDAQ-100 ETF
 ]
@@ -623,4 +623,4 @@ def main():
     send_email(subject, html)
 
 if __name__ == '__main__':
-    main()
+    main().
