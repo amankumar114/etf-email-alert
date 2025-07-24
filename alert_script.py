@@ -623,4 +623,4 @@ def main():
     send_email(subject, html)
 
 if __name__ == '__main__':
-    main().
+    main()
