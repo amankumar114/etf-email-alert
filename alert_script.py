@@ -19,16 +19,16 @@ from email.mime.text import MIMEText
 
 # === CONFIG ===
 # Update the TICKERS list to include the new ETFs
-# === CONFIG ===
-# Updated TICKERS list with only the requested ETFs
 TICKERS = [
-    'NIFTYBEES.NS',     # Nifty 50 ETF
-    'JUNIORBEES.NS',    # Nifty Next 50 ETF
-    'MOM150.NS',        # Nifty Midcap 150 ETF (Motilal Oswal)
-    'MO250.NS',         # Nifty Smallcap 250 ETF (Motilal Oswal)
-    'GOLDBEES.NS',      # Gold ETF
-    'QQQ',              # NASDAQ-100 ETF
-    'SPY'                    # S&P 500 ETF
+    'NIFTYBEES.NS',        # Nifty 50 ETF
+    'BANKBEES.NS',         # Banking Sector ETF
+    'GOLDBEES.NS',         # Gold ETF
+    'JUNIORBEES.NS',         # Nippon India Nifty Auto ETF
+    'ITBEES.NS',           # Nippon India Nifty IT ETF
+    'FMCGBEES.NS',         # Nippon India Nifty FMCG ETF
+    'PHARMABEES.NS',       # Nippon India Nifty Pharma ETF
+    'SPY',                 # S&P 500 ETF
+    'QQQ'                  # NASDAQ-100 ETF
 ]
 # Rest of the code remains exactly the same...
 EMA_DAYS = [20, 50, 100, 200]  # Key EMAs to track
