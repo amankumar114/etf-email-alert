@@ -8,25 +8,28 @@ from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
 import logging
 import numpy as np
-import math
-import warnings
-warnings.filterwarnings('ignore', category=FutureWarning)
+import os
+import smtplib
+import logging
+from email.mime.multipart import MIMEMultipart
+from email.mime.text import MIMEText
 
 # === CONFIG ===
+# Update the TICKERS list to include the new ETFs
 TICKERS = [
     'NIFTYBEES.NS',        # Nifty 50 ETF
     'BANKBEES.NS',         # Banking Sector ETF
     'GOLDBEES.NS',         # Gold ETF
-    'AUTOBEES.NS',         # Nippon India Nifty Auto ETF
-    'ITBEES.NS',           # Nippon India Nifty IT ETF
-    'JUNIORBEES.NS',       # Nippon India Nifty FMCG ETF
-    'PHARMABEES.NS',       # Nippon India Nifty Pharma ETF
+    'SILVERBEES.NS',         # Nippon India Nifty Auto ETF
+    'MID150BEES.NS',           # Nippon India Nifty IT ETF
+    'JUNIORBEES.NS',         # Nippon India Nifty FMCG ETF
+    'HDFCSML250.NS',       # Nippon India Nifty Pharma ETF
     'SPY',                 # S&P 500 ETF
     'QQQ'                  # NASDAQ-100 ETF
 ]
+# Rest of the code remains exactly the same...
 EMA_DAYS = [20, 50, 100, 200]  # Key EMAs to track
-VOLATILITY_PERIOD = 21          # 1-month volatility
-VOLATILITY_THRESHOLD = 2.5      # %
+VOLATILITY_THRESHOLD = 2.5  # %
 LAST_BUY_FILE = 'last_buy_dates.json'
 
 EMAIL_SENDER = os.getenv("EMAIL")
@@ -43,120 +46,110 @@ logging.basicConfig(
     ]
 )
 
-def fetch_data(ticker):
-    """Fetch data with sufficient history for EMA calculations"""
+def fetch_data(ticker, period, interval):
     try:
-        # Calculate required days (200 EMA + buffer)
-        required_days = int(EMA_DAYS[-1] * 1.5)
-        df = yf.download(ticker, period=f'{required_days}d', interval='1d', auto_adjust=True, progress=False)
-        
+        df = yf.download(ticker, period=period, interval=interval, auto_adjust=True, progress=False)
         if df.empty:
             raise ValueError(f"No data returned for {ticker}")
-        
-        # Validate data length
-        if len(df) < EMA_DAYS[-1]:
-            raise ValueError(f"Insufficient data ({len(df)} points) for EMA calculations")
-            
         return df
     except Exception as e:
         logging.error(f"Error fetching data for {ticker}: {str(e)}")
         return pd.DataFrame()
 
 def safe_float_conversion(value):
-    """Safely convert values to float handling NaNs and infinities"""
-    try:
-        if pd.isna(value) or np.isinf(value):
+    """Safely convert any numeric value to float without warnings"""
+    if isinstance(value, (np.ndarray, pd.Series)):
+        if value.size == 0:
             return 0.0
+        value = value.item()  # Convert numpy array to Python scalar
+    try:
         return float(value)
-    except (TypeError, ValueError):
+    except (ValueError, TypeError):
         return 0.0
 
 def calculate_percentage_diff(current, ma):
-    """Calculate percentage difference with error handling"""
-    if ma == 0 or math.isnan(ma) or math.isinf(ma):
+    """Calculate percentage difference between current price and MA"""
+    if ma == 0:  # Avoid division by zero
         return 0.0
     return ((current - ma) / ma) * 100
 
 def calculate_zone_score(ema_diffs):
     """
-    Calculate accumulation zone score with strict criteria:
-    - Below 200 EMA: Goated (Score 100)
-    - Below 100 EMA: Excellent (Score 90)
-    - Below 50 EMA: Great (Score 75)
-    - Below 20 EMA: Good (Score 60)
-    - Above EMAs get progressively lower scores
+    Calculate accumulation zone score based on which EMAs the price is touching:
+    - Touching 20 EMA: Good (Score 60)
+    - Touching 50 EMA: Great (Score 75)
+    - Touching 100 EMA: Excellent (Score 90)
+    - Touching 200 EMA: Goated (Score 100)
     """
-    # Score based on position relative to EMAs
-    if ema_diffs[3] < 0:   # Below 200 EMA
-        if ema_diffs[2] < 0:  # Below 100 EMA
-            if ema_diffs[1] < 0:  # Below 50 EMA
-                if ema_diffs[0] < 0:  # Below 20 EMA
-                    return 60, "➖ Good Price (Below 20 EMA)"
-                return 75, "👍 Great Price (Below 50 EMA)"
-            return 90, "⭐ Excellent Price (Below 100 EMA)"
-        return 100, "🐐 Goated Price (Below 200 EMA)"
+    # Tolerance for "touching" (percentage difference threshold)
+    TOUCH_THRESHOLD = 0.5  # %
     
-    # Above EMAs - less favorable
-    if ema_diffs[0] > 0:   # Above 20 EMA
-        if ema_diffs[1] > 0:  # Above 50 EMA
-            if ema_diffs[2] > 0:  # Above 100 EMA
-                return 0, "⛔ Very Expensive (Above all EMAs)"
-            return 10, "⛔ Expensive (Above 50 EMA)"
-        return 20, "⚠️ High Zone (Above 20 EMA)"
-    return 30, "⚠️ Caution Zone (Near 20 EMA)"
-
-def calculate_volatility(df):
-    """Calculate realistic volatility using log returns"""
-    try:
-        if len(df) < 2:
-            return 0.0
-            
-        # Use last 3 months data for volatility calculation
-        volatility_data = df.tail(VOLATILITY_PERIOD * 3)
-        if len(volatility_data) < 2:
-            return 0.0
-            
-        returns = np.log(volatility_data['Close'] / volatility_data['Close'].shift(1))
-        return returns.std() * np.sqrt(252) * 100  # Annualized percentage
-    except Exception as e:
-        logging.error(f"Volatility calculation error: {str(e)}")
-        return 0.0
+    # Check which EMAs the price is touching (within threshold)
+    touching = [
+        abs(diff) <= TOUCH_THRESHOLD
+        for diff in ema_diffs
+    ]
+    
+    # Determine the highest EMA being touched
+    if touching[3]:  # 200 EMA
+        return 100, "🐐 Goated Price (Touching 200 EMA)"
+    elif touching[2]:  # 100 EMA
+        return 90, "⭐ Excellent Price (Touching 100 EMA)"
+    elif touching[1]:  # 50 EMA
+        return 75, "👍 Great Price (Touching 50 EMA)"
+    elif touching[0]:  # 20 EMA
+        return 60, "➖ Good Price (Touching 20 EMA)"
+    else:
+        # If not touching any EMA, score based on how close we are to key EMAs
+        closest_ema_index = np.argmin([abs(d) for d in ema_diffs])
+        closest_diff = ema_diffs[closest_ema_index]
+        
+        if closest_diff < 0:  # Below EMA
+            if closest_ema_index == 3:  # Closest to 200 EMA
+                return 85, "Near Goated Zone (Approaching 200 EMA)"
+            elif closest_ema_index == 2:  # Closest to 100 EMA
+                return 70, "Near Excellent Zone (Approaching 100 EMA)"
+            elif closest_ema_index == 1:  # Closest to 50 EMA
+                return 55, "Near Great Zone (Approaching 50 EMA)"
+            else:  # Closest to 20 EMA
+                return 40, "Near Good Zone (Approaching 20 EMA)"
+        else:  # Above EMA
+            if closest_ema_index == 3:  # Above 200 EMA
+                return 30, "⚠️ Caution Zone (Above 200 EMA)"
+            elif closest_ema_index == 2:  # Above 100 EMA
+                return 20, "⚠️ High Zone (Above 100 EMA)"
+            elif closest_ema_index == 1:  # Above 50 EMA
+                return 10, "⛔ Expensive Zone (Above 50 EMA)"
+            else:  # Above 20 EMA
+                return 0, "⛔ Very Expensive Zone (Above 20 EMA)"
 
 def calculate_signal(daily_df):
     try:
         if daily_df.empty:
             raise ValueError("Empty DataFrame received")
-        
+            
         # Calculate all EMAs
-        ema_values = []
-        for ema in EMA_DAYS:
-            # Ensure enough data points for EMA calculation
-            if len(daily_df) >= ema:
-                ema_val = daily_df['Close'].ewm(span=ema, adjust=False).mean().iloc[-1]
-            else:
-                # Fallback to SMA if not enough data
-                ema_val = daily_df['Close'].iloc[-ema:].mean() if len(daily_df) >= 5 else daily_df['Close'].iloc[-1]
-            ema_values.append(safe_float_conversion(ema_val))
+        ema_values = [
+            safe_float_conversion(daily_df['Close'].ewm(span=ema, adjust=False).mean().iloc[-1])
+            for ema in EMA_DAYS
+        ]
         
         last_close = safe_float_conversion(daily_df['Close'].iloc[-1])
-        
+        volatility = safe_float_conversion(daily_df['Close'].pct_change().std() * 100)
+
         # Calculate percentage differences from EMAs
         ema_diffs = [
             calculate_percentage_diff(last_close, ema)
             for ema in ema_values
         ]
         
-        # Calculate volatility using realistic method
-        volatility = calculate_volatility(daily_df)
-
         # Calculate zone score and classification
         zone_score, zone_class = calculate_zone_score(ema_diffs)
 
-        # Buy signal conditions (stricter criteria)
+        # Buy signal conditions
         buy_signal = (
-            zone_score >= 75 and  # At least "Great" zone
-            volatility <= VOLATILITY_THRESHOLD and
-            last_close < min(ema_values)  # Price below all key EMAs
+            zone_score >= 60 and  # At least "Good" zone
+            volatility <= VOLATILITY_THRESHOLD
         )
 
         return {
@@ -411,7 +404,7 @@ def generate_html(reports, force_buy=False):
         <div class="container">
             <div class="header">
                 <h1>Aman's ETF Newsletter</h1>
-                <p>Enhanced EMA Strategy</p>
+                <p>EMA Touch Strategy</p>
                 <div class="date-badge">{today.strftime('%d %B %Y')}</div>
             </div>
             
@@ -469,29 +462,23 @@ def generate_html(reports, force_buy=False):
             rec_class = "avoid"
             recommendation = "⛔ AVOID - Price too high"
         
-        # Ensure all values are floats for formatting
-        last_close = float(r['last_close'])
-        volatility = float(r['volatility'])
-        ema_values = [float(x) for x in r['ema_values']]
-        ema_diffs = [float(x) for x in r['ema_diffs']]
-        
         html += f"""
                 <div class="card" style="border-top-color: {zone_color}">
                     <div class="card-header">
                         <div class="card-title">{r['ticker']}</div>
                         <div class="zone-class" style="background: {zone_color}22; color: {zone_color}">
-                            {r['zone_class']}
+                            {r['zone_class'].split('(')[0].strip()}
                         </div>
                     </div>
                     
                     <div class="price-container">
                         <div class="price-box">
                             <div class="price-label">CURRENT PRICE</div>
-                            <div class="price-value">₹{last_close:.2f}</div>
+                            <div class="price-value">₹{r['last_close']:.2f}</div>
                         </div>
                         <div class="price-box">
                             <div class="price-label">VOLATILITY</div>
-                            <div class="price-value">{volatility:.1f}%</div>
+                            <div class="price-value">{r['volatility']:.1f}%</div>
                         </div>
                     </div>
                     
@@ -503,23 +490,23 @@ def generate_html(reports, force_buy=False):
                         </tr>
                         <tr>
                             <td>20 EMA</td>
-                            <td>₹{ema_values[0]:.2f}</td>
-                            <td class="{'diff-down' if ema_diffs[0] < 0 else 'diff-up'}">{ema_diffs[0]:+.1f}%</td>
+                            <td>₹{r['ema_values'][0]:.2f}</td>
+                            <td class="{'diff-down' if r['ema_diffs'][0] < 0 else 'diff-up'}">{r['ema_diffs'][0]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>50 EMA</td>
-                            <td>₹{ema_values[1]:.2f}</td>
-                            <td class="{'diff-down' if ema_diffs[1] < 0 else 'diff-up'}">{ema_diffs[1]:+.1f}%</td>
+                            <td>₹{r['ema_values'][1]:.2f}</td>
+                            <td class="{'diff-down' if r['ema_diffs'][1] < 0 else 'diff-up'}">{r['ema_diffs'][1]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>100 EMA</td>
-                            <td>₹{ema_values[2]:.2f}</td>
-                            <td class="{'diff-down' if ema_diffs[2] < 0 else 'diff-up'}">{ema_diffs[2]:+.1f}%</td>
+                            <td>₹{r['ema_values'][2]:.2f}</td>
+                            <td class="{'diff-down' if r['ema_diffs'][2] < 0 else 'diff-up'}">{r['ema_diffs'][2]:+.1f}%</td>
                         </tr>
                         <tr>
                             <td>200 EMA</td>
-                            <td>₹{ema_values[3]:.2f}</td>
-                            <td class="{'diff-down' if ema_diffs[3] < 0 else 'diff-up'}">{ema_diffs[3]:+.1f}%</td>
+                            <td>₹{r['ema_values'][3]:.2f}</td>
+                            <td class="{'diff-down' if r['ema_diffs'][3] < 0 else 'diff-up'}">{r['ema_diffs'][3]:+.1f}%</td>
                         </tr>
                     </table>
                     
@@ -561,13 +548,9 @@ def generate_html(reports, force_buy=False):
                 </div>
                 
                 <div class="disclaimer">
-                    Enhanced accumulation strategy. Buy signals trigger only when:
-                    <ul style="text-align: left; max-width: 500px; margin: 10px auto;">
-                        <li>Price is below all key EMAs</li>
-                        <li>In Great or better accumulation zone</li>
-                        <li>Volatility &lt; {VOLATILITY_THRESHOLD}%</li>
-                    </ul>
-                    Volatility is annualized. Always conduct your own research.
+                    This is an automated report. "Touching" means price is within 0.5% of the EMA value.
+                    Volatility Threshold: Prefer accumulation when volatility &lt; {VOLATILITY_THRESHOLD}%.
+                    Always conduct your own research before making investment decisions.
                     <br><br>
                     Generated on {today.strftime('%Y-%m-%d %H:%M:%S')}
                 </div>
@@ -580,7 +563,7 @@ def generate_html(reports, force_buy=False):
 
 def main():
     logging.info("=" * 60)
-    logging.info("Enhanced ETF Accumulation Report")
+    logging.info("ETF EMA Touch Accumulation Report")
     logging.info("=" * 60)
 
     last_buys = load_last_buy_dates()
@@ -592,8 +575,8 @@ def main():
     for ticker in TICKERS:
         logging.info(f"Analyzing: {ticker}")
         
-        # Fetch data with sufficient history
-        daily = fetch_data(ticker)
+        # Fetch daily data
+        daily = fetch_data(ticker, '6mo', '1d')
 
         if daily.empty:
             reports.append({
@@ -624,8 +607,7 @@ def main():
             'error': None
         })
 
-    # Email subject logic
-    subject = f"📊 Enhanced ETF Report - {today.strftime('%d %b %Y')}"
+    subject = f"📊 Aman's ETF Report - {today.strftime('%d %b %Y')}"
     if force_buy:
         subject = f"🚨 Monthly Reminder: {subject}"
     elif any(r.get('buy_signal', False) for r in reports):
@@ -633,7 +615,9 @@ def main():
         if best_zone >= 90:
             subject = f"🐐 Goated Price Alert: {subject}"
         elif best_zone >= 75:
-            subject = f"👍 Great Accumulation Zone: {subject}"
+            subject = f"⭐ Excellent Price Alert: {subject}"
+        else:
+            subject = f"✅ Good Accumulation: {subject}"
     
     html = generate_html(reports, force_buy)
     send_email(subject, html)
