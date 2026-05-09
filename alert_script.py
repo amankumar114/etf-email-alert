@@ -36,8 +36,8 @@ TICKERS = [
     {'symbol': 'GOLDBEES.NS',   'name': 'Gold ETF',              'currency': 'INR'},
     {'symbol': 'SILVERBEES.NS', 'name': 'Silver ETF',            'currency': 'INR'},
     {'symbol': 'HDFCSML250.NS', 'name': 'HDFC Smallcap 250 ETF', 'currency': 'INR'},
-    {'symbol': 'SPY',           'name': 'S&P 500 ETF',           'currency': 'USD'},
-    {'symbol': 'QQQ',           'name': 'Nasdaq-100 ETF',        'currency': 'USD'},
+    {'symbol': 'SPY',            'name': 'S&P 500 ETF',           'currency': 'USD'},
+    {'symbol': 'QQQ',            'name': 'Nasdaq-100 ETF',        'currency': 'USD'},
 ]
 
 EMA_PERIODS     = [20, 50, 100, 200]
@@ -188,10 +188,10 @@ def analyse_ticker(ticker_info):
 
         ema_vals  = [calc_ema(df['Close'], p) for p in EMA_PERIODS]
         ema_diffs = [((last - e) / e) * 100 for e in ema_vals]
-        rsi               = calc_rsi(df['Close'])
-        rsi_label, boost  = interpret_rsi(rsi)
-        vol               = float(df['Close'].pct_change().std() * 100)
-        vol_ratio         = calc_volume_ratio(df)
+        rsi                = calc_rsi(df['Close'])
+        rsi_label, boost   = interpret_rsi(rsi)
+        vol                = float(df['Close'].pct_change().std() * 100)
+        vol_ratio          = calc_volume_ratio(df)
         wk52              = calc_52w_position(df)
         zone_score, zlabel = calc_zone_score(last, ema_vals, ema_diffs)
         adj               = max(0, min(100, zone_score + boost))
@@ -407,7 +407,6 @@ def generate_html(reports, last_buys, is_last_day):
                     margin-bottom:20px;border:1px solid #e2e8f0;
                     border-top:4px solid {sc};">
 
-          <!-- header -->
           <table width="100%" cellpadding="0" cellspacing="0"
                  style="padding:14px 14px 12px;">
             <tr>
@@ -431,7 +430,6 @@ def generate_html(reports, last_buys, is_last_day):
           </table>
           <div style="border-top:1px solid #f1f5f9;"></div>
 
-          <!-- 4-stat bar — table layout -->
           <table width="100%" cellpadding="0" cellspacing="0"
                  style="background:#f8fafc;">
             <tr>
@@ -439,7 +437,7 @@ def generate_html(reports, last_buys, is_last_day):
                                      border-right:1px solid #e2e8f0;
                                      vertical-align:top;">
                 <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;
-                             letter-spacing:0.07em;font-weight:700;">Zone</div>
+                            letter-spacing:0.07em;font-weight:700;">Zone</div>
                 <div style="font-size:20px;font-weight:800;color:{sc};
                              line-height:1.1;margin-top:3px;">{r['adjusted_score']}</div>
                 <div style="font-size:10px;color:{sc};font-weight:600;
@@ -449,7 +447,7 @@ def generate_html(reports, last_buys, is_last_day):
                                      border-right:1px solid #e2e8f0;
                                      vertical-align:top;">
                 <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;
-                             letter-spacing:0.07em;font-weight:700;">RSI&nbsp;({RSI_PERIOD})</div>
+                            letter-spacing:0.07em;font-weight:700;">RSI&nbsp;({RSI_PERIOD})</div>
                 <div style="font-size:20px;font-weight:800;line-height:1.1;
                              margin-top:3px;">{r['rsi']}</div>
                 <div style="font-size:10px;color:#64748b;margin-top:2px;
@@ -459,7 +457,7 @@ def generate_html(reports, last_buys, is_last_day):
                                      border-right:1px solid #e2e8f0;
                                      vertical-align:top;">
                 <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;
-                             letter-spacing:0.07em;font-weight:700;">Volatility</div>
+                            letter-spacing:0.07em;font-weight:700;">Volatility</div>
                 <div style="font-size:20px;font-weight:800;line-height:1.1;
                              margin-top:3px;">{r['volatility']:.1f}%</div>
                 <div style="font-size:10px;color:#64748b;margin-top:2px;">
@@ -468,7 +466,7 @@ def generate_html(reports, last_buys, is_last_day):
               <td width="25%" style="padding:10px 6px;
                                      vertical-align:top;">
                 <div style="font-size:9px;color:#94a3b8;text-transform:uppercase;
-                             letter-spacing:0.07em;font-weight:700;">Volume</div>
+                            letter-spacing:0.07em;font-weight:700;">Volume</div>
                 <div style="font-size:20px;font-weight:800;line-height:1.1;
                              margin-top:3px;">{r['vol_ratio']}x</div>
                 <div style="font-size:10px;color:#64748b;margin-top:2px;">
@@ -477,7 +475,6 @@ def generate_html(reports, last_buys, is_last_day):
             </tr>
           </table>
 
-          <!-- context (each fact on its own line — no mobile overflow) -->
           <div style="padding:10px 14px;background:#f8fafc;
                       border-top:1px solid #f1f5f9;
                       border-bottom:1px solid #f1f5f9;
@@ -493,7 +490,6 @@ def generate_html(reports, last_buys, is_last_day):
             <div>&#128200; <strong>Volume:</strong> {r['vol_note']}</div>
           </div>
 
-          <!-- EMA table -->
           <table width="100%" cellpadding="0" cellspacing="0"
                  style="border-collapse:collapse;">
             <tr style="background:#f8fafc;">
@@ -513,7 +509,6 @@ def generate_html(reports, last_buys, is_last_day):
             {ema_rows}
           </table>
 
-          <!-- recommendation -->
           <div style="padding:13px 14px;text-align:center;font-weight:700;
                       font-size:15px;background:{rb};color:{rf};">
             {rt}
@@ -549,7 +544,6 @@ def generate_html(reports, last_buys, is_last_day):
              color:#1e293b;">
 <div style="max-width:640px;margin:0 auto;">
 
-  <!-- HEADER -->
   <div style="background:#1e1b4b;border-radius:14px 14px 0 0;
               padding:22px 18px 16px;text-align:center;">
     <div style="font-size:20px;font-weight:800;color:#ffffff;">
@@ -563,7 +557,6 @@ def generate_html(reports, last_buys, is_last_day):
     </div>
   </div>
 
-  <!-- BODY -->
   <div style="background:#ffffff;padding:16px 14px;">
     <table width="100%" cellpadding="0" cellspacing="0">
       {banners}
@@ -572,7 +565,6 @@ def generate_html(reports, last_buys, is_last_day):
     </table>
   </div>
 
-  <!-- FOOTER -->
   <div style="background:#1e293b;border-radius:0 0 14px 14px;
               padding:14px 14px;color:#94a3b8;font-size:11px;">
     <table width="100%" cellpadding="0" cellspacing="0">
