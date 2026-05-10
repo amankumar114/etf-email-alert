@@ -2,15 +2,15 @@ name: Aman's ETF Accumulation Alert
 
 on:
   schedule:
-    - cron: '0 9 * * 1-5'  # 2:30 PM IST (9:00 AM UTC), weekdays only (Mon-Fri)
-  workflow_dispatch:        # allows manual trigger from GitHub Actions tab
+    - cron: '0 9 * * 1-5'  # 2:30 PM IST, weekdays only (Mon–Fri)
+  workflow_dispatch:        # lets you trigger manually from the Actions tab
 
 jobs:
   run-alert:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write       # REQUIRED: allows git push of last_buy_dates.json
+      contents: write       # needed so git can push last_buy_dates.json back
 
     env:
       EMAIL:          ${{ secrets.EMAIL }}
@@ -19,7 +19,7 @@ jobs:
 
     steps:
 
-      - name: Checkout repo (with write token for git push)
+      - name: Checkout repo
         uses: actions/checkout@v4
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -30,7 +30,7 @@ jobs:
         with:
           python-version: '3.10'
 
-      - name: Cache pip dependencies
+      - name: Cache pip
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
@@ -42,12 +42,9 @@ jobs:
         run: pip install yfinance pandas numpy
 
       - name: Run ETF alert
-        run: python etf_accumulation.py
+        run: python alert_script.py
 
-      - name: Persist buy dates back to repo
-        # Only runs if last_buy_dates.json was created or changed.
-        # [skip ci] in the commit message prevents this push from
-        # triggering another workflow run.
+      - name: Persist buy dates
         run: |
           git config user.email "actions@github.com"
           git config user.name "GitHub Actions"
