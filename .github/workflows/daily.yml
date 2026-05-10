@@ -1,30 +1,56 @@
-name: Run Daily ETF Email
+name: Aman's ETF Accumulation Alert
 
 on:
   schedule:
-    - cron: '0 9 * * *'  # Runs daily at 2:30 PM IST (9:00 AM UTC)
-  workflow_dispatch:
+    - cron: '0 9 * * 1-5'  # 2:30 PM IST (9:00 AM UTC), weekdays only (Mon-Fri)
+  workflow_dispatch:        # allows manual trigger from GitHub Actions tab
 
 jobs:
-  build:
+  run-alert:
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write       # REQUIRED: allows git push of last_buy_dates.json
+
     env:
-      EMAIL: ${{ secrets.EMAIL }}
-      PASS: ${{ secrets.PASS }}
+      EMAIL:          ${{ secrets.EMAIL }}
+      PASS:           ${{ secrets.PASS }}
       EMAIL_RECEIVER: ${{ secrets.EMAIL_RECEIVER }}
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.10'
+      - name: Checkout repo (with write token for git push)
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 1
 
-    - name: Install dependencies
-      run: pip install yfinance pandas numpy
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
 
-    - name: Run alert script
-      run: python alert_script.py
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-yfinance-pandas-numpy
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: pip install yfinance pandas numpy
+
+      - name: Run ETF alert
+        run: python etf_accumulation.py
+
+      - name: Persist buy dates back to repo
+        # Only runs if last_buy_dates.json was created or changed.
+        # [skip ci] in the commit message prevents this push from
+        # triggering another workflow run.
+        run: |
+          git config user.email "actions@github.com"
+          git config user.name "GitHub Actions"
+          git add last_buy_dates.json
+          git diff --staged --quiet || git commit -m "chore: update buy dates [skip ci]"
+          git push
