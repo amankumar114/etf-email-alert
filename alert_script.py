@@ -79,6 +79,31 @@ TICKERS = [
     {'symbol': 'QQQ',           'name': 'Nasdaq-100',        'currency': 'USD', 'category': 'us'},
 ]
 
+# ──────────────────────────────────────────────────────────────
+# CATEGORY ALLOCATION CAPS  (as % of monthly budget)
+# ──────────────────────────────────────────────────────────────
+# Rationale for aggressive wealth building at age 27:
+#   • largecap / midcap / smallcap / us = full equity — no cap
+#   • sectoral (Bank Nifty) = higher concentration risk — 20% max
+#   • commodity (Gold, Silver) = hedge only, NOT a compounder —
+#     Gold CAGR ~9% vs equity ~15%. At 27 with a 5-10yr horizon,
+#     over-allocating to Gold is the single biggest drag on returns.
+#     Hard cap at 10% of budget = max ₹2,000 on a ₹20K budget.
+#     Silver is even more volatile with no income — same 10% shared cap.
+#
+# The scoring system is pure technicals — it will always score Gold
+# highly when it's near an EMA. These caps OVERRIDE the score so that
+# financial logic governs allocation, not just price momentum.
+# ──────────────────────────────────────────────────────────────
+CATEGORY_MAX_PCT = {
+    'largecap':  1.00,   # up to 100% — core equity, no limit
+    'midcap':    1.00,   # up to 100% — aggressive growth, no limit
+    'smallcap':  0.40,   # max 40% — high risk, high reward but volatile
+    'sectoral':  0.20,   # max 20% — concentrated sector risk
+    'commodity': 0.10,   # max 10% — hedge only, NOT a wealth compounder
+    'us':        0.30,   # max 30% — great diversification, currency risk
+}
+
 MONTHLY_BUDGET    = 20000   # ₹ — your monthly ETF accumulation budget
 EMA_PERIODS       = [20, 50, 100, 200]
 RSI_PERIOD        = 14
@@ -381,23 +406,76 @@ def analyse_ticker(ticker_info):
 
 def calc_allocation(reports, budget=MONTHLY_BUDGET):
     """
-    Split the monthly budget across qualifying BUY tickers,
-    weighted by adjusted score. Rounds to nearest ₹500.
-    Returns a dict {symbol: amount} that sums to <= budget.
+    Split the monthly budget across qualifying BUY tickers.
+
+    Step 1 — Score-weighted raw allocation (same as before).
+    Step 2 — Apply CATEGORY_MAX_PCT caps so commodities / sectorals
+             can never crowd out core equity regardless of their EMA score.
+             Example: Gold scores 100 near its 200 EMA, but commodity cap
+             is 10%, so Gold gets max ₹2,000 on a ₹20K budget.
+    Step 3 — Freed-up budget is redistributed to uncapped equity ETFs
+             proportionally, so ₹20K is always fully deployed.
+    Step 4 — Round to nearest ₹500. Remainder goes to top equity ticker.
+
+    Category caps (CATEGORY_MAX_PCT) reflect long-term return profiles:
+      Commodity (Gold/Silver) ~9% CAGR vs equity ~15% CAGR over 20 years.
+      At 27, over-weighting Gold is the single biggest drag on final corpus.
     """
     buys = [r for r in reports if not r.get('error') and r.get('buy_signal')]
     if not buys:
         return {}
 
+    # ── build a lookup: symbol → category ───────────────────
+    cat_map = {t['symbol']: t.get('category', 'largecap') for t in TICKERS}
+
+    # ── step 1: raw score-weighted amounts ───────────────────
     total_score = sum(r['adjusted_score'] for r in buys)
-    raw   = {r['symbol']: (r['adjusted_score'] / total_score) * budget for r in buys}
-    # Round to nearest 500
-    alloc = {sym: max(500, round(amt / 500) * 500) for sym, amt in raw.items()}
-    # Adjust total to match budget exactly — add remainder to highest-score ticker
-    diff = budget - sum(alloc.values())
-    if diff != 0:
-        best = max(buys, key=lambda r: r['adjusted_score'])['symbol']
-        alloc[best] = max(500, alloc[best] + diff)
+    raw = {r['symbol']: (r['adjusted_score'] / total_score) * budget for r in buys}
+
+    # ── step 2: apply per-category caps ──────────────────────
+    capped   = {}
+    overflow = 0.0          # budget freed from capped tickers
+    for sym, amt in raw.items():
+        cat     = cat_map.get(sym, 'largecap')
+        max_amt = CATEGORY_MAX_PCT.get(cat, 1.0) * budget
+        if amt > max_amt:
+            overflow += amt - max_amt
+            capped[sym] = max_amt
+        else:
+            capped[sym] = amt
+
+    # ── step 3: redistribute overflow to uncapped equity ETFs ─
+    # "uncapped" = tickers whose category max is 100% (core equity)
+    # If no uncapped equity exists, overflow stays undeployed — it is
+    # financially correct NOT to force-buy commodities over their cap.
+    if overflow > 0:
+        uncapped_syms = [
+            sym for sym, amt in capped.items()
+            if CATEGORY_MAX_PCT.get(cat_map.get(sym, 'largecap'), 1.0) >= 1.0
+        ]
+        if uncapped_syms:
+            uncapped_score_total = sum(
+                r['adjusted_score'] for r in buys if r['symbol'] in uncapped_syms
+            )
+            for r in buys:
+                if r['symbol'] in uncapped_syms and uncapped_score_total > 0:
+                    extra = (r['adjusted_score'] / uncapped_score_total) * overflow
+                    capped[r['symbol']] += extra
+        # else: no equity ETFs in buy zone — keep overflow as cash this month
+
+    # ── step 4: round to nearest ₹500, fix rounding gap ──────
+    alloc = {sym: max(500, round(amt / 500) * 500) for sym, amt in capped.items()}
+    # Only redistribute rounding gap if there are uncapped equity ETFs.
+    # If only commodity/sectoral ETFs qualified, do NOT inflate their allocation
+    # to fill the budget — it is correct to deploy less than ₹20K this month.
+    equity_buys = [r for r in buys
+                   if CATEGORY_MAX_PCT.get(cat_map.get(r['symbol'], 'largecap'), 1.0) >= 1.0]
+    if equity_buys:
+        diff = budget - sum(alloc.values())
+        if diff != 0:
+            top = max(equity_buys, key=lambda r: r['adjusted_score'])['symbol']
+            alloc[top] = max(500, alloc[top] + diff)
+
     return alloc
 
 
