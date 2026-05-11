@@ -2,7 +2,7 @@ name: Aman's ETF Accumulation Alert
 
 on:
   schedule:
-    - cron: '0 9 * * 1-5'  # 2:30 PM IST, weekdays only (Mon–Fri)
+    - cron: '30 4 * * *'   # 10:00 AM IST, runs daily
   workflow_dispatch:        # lets you trigger manually from the Actions tab
 
 jobs:
